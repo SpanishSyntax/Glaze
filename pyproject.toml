@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "glaze"
+version = "0.1.0"
+description = "Universal filename sanitizer, case transformer, and batch rename engine"
+readme = "README.md"
+authors = [{ name = "SpanishSyntax", email = "spanishsyntax@pyritelabs.cc" }]
+license = { text = "MIT" }
+requires-python = ">=3.11"
+keywords = ["rename", "sanitizer", "case-transformer", "snake-case", "kebab-case", "cli"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Topic :: Utilities",
+]
+dependencies = []
+
+[project.scripts]
+glaze = "glaze.cli:main"
+capspace = "glaze.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["glaze*"]
