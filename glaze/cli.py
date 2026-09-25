@@ -7,25 +7,7 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
-USE_COLOR = sys.stdout.isatty() and "NO_COLOR" not in os.environ
-
-
-def style(text: str, code: str) -> str:
-    return f"\033[{code}m{text}\033[0m" if USE_COLOR else text
-
-
-RED = "0;31"
-GREEN = "0;32"
-BOLD_GREEN = "1;32"
-YELLOW = "1;33"
-BLUE = "1;34"
-CYAN = "0;36"
-BOLD = "1"
-GRAY = "90"
-
-
-def status(icon: str, msg: str, code: str = BOLD) -> str:
-    return f"{style('✨ [glaze]', CYAN)} {style(f'{icon} {msg}', code)}"
+from glaze.ui import ui
 
 
 @dataclass
@@ -42,17 +24,10 @@ def normalize_words(name: str) -> list[str]:
     Splits camelCase, PascalCase, snake_case, kebab-case, dots, and spaced strings
     into a clean list of words.
     """
-    # Break camelCase and PascalCase boundaries (e.g., 'mySuperFile' -> 'my Super File')
     s = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", name)
     s = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", s)
-
-    # Replace common delimiters with spaces
     s = re.sub(r"[_.\-—–/]+", " ", s)
-
-    # Strip extraneous punctuation often found in downloaded files
     s = re.sub(r"[,;:\\()\[\]{}'\"`~!@#$%^&*+=|<>?]+", " ", s)
-
-    # Split into words and discard empties
     return [w for w in s.strip().split() if w]
 
 
@@ -138,43 +113,42 @@ def run_undo() -> bool:
     """Reverses the last recorded batch rename operation."""
     log_file = get_undo_log_path()
     if not log_file.exists():
-        print(status("✘", "No previous Glaze rename history found to undo.", RED), file=sys.stderr)
+        ui.error("No previous Glaze rename history found to undo.")
         return False
 
     try:
         data = json.loads(log_file.read_text(encoding="utf-8"))
     except Exception as e:
-        print(status("✘", f"Failed to read undo log: {e}", RED), file=sys.stderr)
+        ui.error(f"Failed to read undo log: {e}")
         return False
 
     if not data:
-        print(status("✘", "Undo log is empty.", RED))
+        ui.warn("Undo log is empty.")
         return False
 
-    print(status("🔄", f"Reverting {len(data)} rename operation(s)...", CYAN))
+    ui.action(f"Reverting {len(data)} rename operation(s)...", symbol="🔄")
     reverted = 0
-    # Process in reverse order to properly undo nested renames
     for item in reversed(data):
         old_path = Path(item["old"])
         new_path = Path(item["new"])
 
         if not new_path.exists():
-            print(f"  {style('SKIP', YELLOW)} Current file '{new_path}' not found, skipping.")
+            print(f"  {ui.yellow('SKIP')} Current file '{new_path}' not found, skipping.")
             continue
 
         if old_path.exists():
-            print(f"  {style('COLLISION', RED)} Original path '{old_path}' already exists, skipping.")
+            print(f"  {ui.red('COLLISION')} Original path '{old_path}' already exists, skipping.")
             continue
 
         try:
             new_path.rename(old_path)
-            print(f"  {style('REVERTED', GREEN)} '{new_path.name}' -> '{old_path.name}'")
+            print(f"  {ui.green('REVERTED')} '{new_path.name}' → '{old_path.name}'")
             reverted += 1
         except Exception as e:
-            print(f"  {style('ERROR', RED)} Failed to revert '{new_path}': {e}", file=sys.stderr)
+            print(f"  {ui.red('ERROR')} Failed to revert '{new_path}': {e}", file=sys.stderr)
 
     log_file.unlink(missing_ok=True)
-    print(status("✔", f"Successfully reverted {reverted} file(s).", GREEN))
+    ui.success(f"Successfully reverted {reverted} file(s).")
     return True
 
 
@@ -192,7 +166,6 @@ def scan_directory(
     clean_ext = extension.lstrip(".") if extension and extension != "*" else None
 
     if recursive:
-        # Traverse bottom-up so renaming parent directories doesn't invalidate child paths
         entries: list[Path] = []
         for dirpath, dirnames, filenames in os.walk(root, topdown=False):
             dp = Path(dirpath)
@@ -207,13 +180,11 @@ def scan_directory(
     for p in entries:
         is_directory = p.is_dir()
 
-        # Skip directories unless --dirs was passed
         if is_directory and not include_dirs:
             continue
 
         name = p.name
 
-        # Skip hidden files without extension (e.g. .bashrc, .gitignore, .git)
         if name.startswith(".") and name.count(".") == 1:
             continue
         if name == ".git" or ".git/" in str(p):
@@ -228,7 +199,6 @@ def scan_directory(
             else:
                 stem, ext = name, ""
 
-            # Check extension filter
             if clean_ext and ext.lower() != clean_ext.lower():
                 continue
 
@@ -320,21 +290,16 @@ Examples:
 
     target_dir = Path(args.dir).resolve()
     if not target_dir.exists():
-        print(status("✘", f"Directory '{target_dir}' does not exist.", RED), file=sys.stderr)
+        ui.error(f"Directory '{target_dir}' does not exist.")
         sys.exit(1)
 
-    print(f"\n{style('✨ ===[ Glaze Initialized ]===', CYAN)}")
-    print(f"Target Root : {style(str(target_dir), BOLD)}")
-    print(f"Style Mode  : {style(case_mode, GREEN)}")
-    if args.safe:
-        print(f"Sanitization: {style('Safe ASCII (Accent normalization active)', YELLOW)}")
-    if args.recursive:
-        print(f"Scope       : {style('Recursive traversal', BLUE)}")
+    ui.action("Initialized Glaze batch rename engine", symbol="🚀")
+    scope_str = "recursive" if args.recursive else "current"
+    safe_str = "Safe ASCII" if args.safe else "standard"
+    ui.info(f"Target: {ui.bold(str(target_dir))} | Mode: {ui.green(case_mode)} | Scope: {scope_str} | Safe: {safe_str}", symbol="📂")
 
     if args.dry_run:
-        print(f"Mode        : {style('DRY RUN (Simulation only)', YELLOW)}\n")
-    else:
-        print(f"Mode        : {style('LIVE EXECUTION', RED)}\n")
+        ui.warn("DRY RUN mode active: simulating renames without modifying files")
 
     plans = scan_directory(
         root=target_dir,
@@ -347,7 +312,7 @@ Examples:
     )
 
     if not plans:
-        print(status("✔", "All filenames already conform to requested styling. Nothing to rename.\n", GREEN))
+        ui.success("All filenames already conform to requested styling. Nothing to rename.")
         sys.exit(0)
 
     # Detect collisions and conflicts
@@ -362,36 +327,31 @@ Examples:
             executable_plans.append(p)
             seen_destinations.add(p.new_path)
 
-    # Print planned renames
+    print()
     for p in plans:
         if p in collisions:
-            print(f"  {style('COLLISION SKIPPED', YELLOW)} '{p.relative_old}' -> target '{p.relative_new}' exists")
+            print(f"  {ui.yellow('[COLLISION SKIPPED]')} '{p.relative_old}' → target '{p.relative_new}' exists")
         else:
             tag = "DIR" if p.is_dir else "FILE"
-            if args.dry_run:
-                print(f"  {style(f'[{tag}]', GRAY)} '{p.relative_old}' \n        -> {style(p.relative_new, GREEN)}")
-            else:
-                print(f"  {style(f'[{tag}]', GRAY)} '{p.relative_old}' -> {style(p.relative_new, GREEN)}")
+            print(f"  {ui.dim(f'[{tag}]')} '{p.relative_old}' → {ui.green(p.relative_new)}")
 
-    print(f"\n{style('===[ Summary ]===', CYAN)}")
-    print(f"Found {style(str(len(plans)), BOLD)} item(s) to rename.")
-    if collisions:
-        print(f"Skipped {style(str(len(collisions)), YELLOW)} item(s) due to name collisions.")
+    print()
+    ui.info(f"Found {ui.bold(str(len(plans)))} item(s) to rename. ({len(collisions)} collisions skipped)", symbol="📊")
 
     if args.dry_run:
-        print(f"\n{status('ℹ️ ', 'Dry-run complete. Re-run without -n to apply renames permanently.', BLUE)}\n")
+        ui.info("Dry-run complete. Re-run without -n to apply renames permanently.", symbol="💡")
         sys.exit(0)
 
     if not executable_plans:
-        print(status("✘", "No renames can be performed safely without collisions.", RED))
+        ui.error("No renames can be performed safely without collisions.")
         sys.exit(1)
 
-    # Interactive confirmation prompt if requested or default interactive safety
+    # Interactive confirmation prompt if requested
     if args.interactive and not args.yes:
         try:
             ans = input(f"\nApply {len(executable_plans)} rename operation(s)? [y/N]: ").strip().lower()
             if ans not in ("y", "yes"):
-                print(status("🛑", "Aborted by user.", YELLOW))
+                ui.warn("Aborted by user.")
                 sys.exit(0)
         except (KeyboardInterrupt, EOFError):
             print("\nAborted.")
@@ -401,18 +361,18 @@ Examples:
     executed_ops: list[tuple[str, str]] = []
     renamed_count = 0
 
-    print(f"\n{status('⚡', 'Applying renames...', CYAN)}")
+    ui.action("Applying renames...", symbol="⚡")
     for p in executable_plans:
         try:
             p.original.rename(p.new_path)
             executed_ops.append((str(p.original), str(p.new_path)))
             renamed_count += 1
         except Exception as e:
-            print(f"  {style('FAILED', RED)} '{p.relative_old}' -> '{p.relative_new}': {e}", file=sys.stderr)
+            print(f"  {ui.red('FAILED')} '{p.relative_old}' → '{p.relative_new}': {e}", file=sys.stderr)
 
     save_undo_log(executed_ops)
-    print(f"\n{status('✔', f'Successfully renamed {renamed_count} item(s).', BOLD_GREEN)}")
-    print(f"{status('💡', 'Run \"glaze undo\" anytime to instantly revert this operation.', BLUE)}\n")
+    ui.success(f"Successfully renamed {renamed_count} item(s).")
+    ui.info('Run "glaze undo" anytime to instantly revert this operation.', symbol="💡")
 
 
 if __name__ == "__main__":
