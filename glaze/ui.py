@@ -9,9 +9,17 @@ class UI:
         self.app_name = app_name
         self.icon = icon
         self.badge_color = badge_color
+        self._color_mode = "auto"
+
+    def set_color_mode(self, mode: str):
+        self._color_mode = mode.lower()
 
     @property
     def use_color(self) -> bool:
+        if self._color_mode == "never":
+            return False
+        if self._color_mode == "always":
+            return True
         if "NO_COLOR" in os.environ:
             return False
         if os.environ.get("CLICOLOR_FORCE", "0") != "0" or "FORCE_COLOR" in os.environ:

@@ -60,20 +60,28 @@ nix run github:SpanishSyntax/Glaze -- undo
 
 ```text
 Usage: glaze [paths...] [options]
-       glaze undo
+       glaze undo [options]
 
 Options:
   -d, --dir PATH         Target directory (Default: current directory)
   -e, --ext EXT          Filter by file extension (e.g., pdf, mp3, txt)
+  -a, --all              Include hidden dotfiles (hard-excludes .git)
   -s, --safe             Safe ASCII: strip non-alphanumeric chars & normalize accents
   -l, --lower-ext        Convert file extensions to lowercase
   -r, --recursive        Recursively process subdirectories
   --dirs                 Also rename directory names
+  --on-conflict MODE     Collision strategy: skip, abort, suffix (Default: skip)
   -n, --dry-run          Simulate changes without renaming any files
   -i, --interactive      Prompt for confirmation before applying renames
   -y, --yes              Bypass confirmation prompt
+  --color MODE           Color output mode: auto, always, never (Default: auto)
+  --no-color             Disable colored output
   -h, --help             Show this help menu
-  -v, --version          Show version information
+  -V, -v, --version      Show version information
+
+Undo Options:
+  -n, --dry-run          Preview operations that would be reverted without modifying files
+  -l, --list             List all recorded operations in undo history
 
 Case Transformations:
   --title-snake          Title_Snake_Case (Default)
