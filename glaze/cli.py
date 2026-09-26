@@ -230,31 +230,66 @@ def scan_directory(
     return plans
 
 
+def print_help():
+    """Prints beautiful colored usage instructions matching Folio & Flaker."""
+    app = ui.app_name
+    print(f"""{ui.badge()} {ui.bold("Universal Filename Sanitizer & Batch Case Engine")}
+
+{ui.blue("Usage:")}
+  {app} [options] [paths...]
+  {app} undo                         Revert the last executed batch rename operation
+
+{ui.blue("Options:")}
+  -d, --dir DIR          Target directory (default: current working directory)
+  -e, --ext EXT          Filter by file extension (e.g. pdf, mp3, txt, png)
+  -s, --safe             Safe ASCII: strip non-alphanumeric chars & normalize accents
+  -l, --lower-ext        Convert file extensions to lowercase
+  -r, --recursive        Recursively process nested subdirectories
+  --dirs                 Also rename directory names
+  -n, --dry-run          Simulate changes without renaming any files
+  -i, --interactive      Prompt for confirmation before applying renames
+  -y, --yes              Bypass confirmation prompt
+  -h, --help             Show this help message and exit
+  -v, --version          Show version and exit
+
+{ui.blue("Case Transformations:")}
+  --title-snake          Title_Snake_Case (default)
+  --snake                standard_snake_case
+  --upper-snake          UPPER_SNAKE_CASE
+  --kebab                standard-kebab-case
+  --pascal               PascalCase
+  --camel                camelCase
+  --lower                lowercase
+  --upper                UPPERCASE
+
+{ui.blue("Examples:")}
+  {app}                              # Sanitize current directory to Title_Snake_Case
+  {app} --snake                      # Convert all files to standard_snake_case
+  {app} -e mp3 --title-snake         # Only format *.mp3 audio files
+  {app} -r -s                        # Recursively sanitize all files with Safe ASCII
+  {app} --kebab --lower-ext          # Turn into kebab-case with lowercase extensions
+  {app} -n                           # Dry-run preview of planned renames
+  {app} undo                         # Revert the last executed batch rename
+""")
+
+
 def main():
+    if any(a in ("-h", "--help", "help") for a in sys.argv[1:]):
+        print_help()
+        sys.exit(0)
+
+    if any(a in ("-v", "--version", "version") for a in sys.argv[1:]):
+        print(f"{ui.badge()} {ui.bold('v0.1.0')}")
+        sys.exit(0)
+
+    # Handle 'glaze undo' subcommand
+    if len(sys.argv) > 1 and sys.argv[1] == "undo":
+        success = run_undo()
+        sys.exit(0 if success else 1)
+
     parser = argparse.ArgumentParser(
         prog="glaze",
-        description="Universal filename sanitizer, case transformer, and batch rename engine.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""\
-Case Transformations:
-  --title-snake       Title_Snake_Case (Default)
-  --snake             standard_snake_case
-  --upper-snake       UPPER_SNAKE_CASE
-  --kebab             standard-kebab-case
-  --pascal            PascalCase
-  --camel             camelCase
-  --lower             lowercase
-  --upper             UPPERCASE
-
-Examples:
-  glaze                               # Sanitize current folder to Title_Snake_Case
-  glaze --snake                       # Convert all files to standard_snake_case
-  glaze -e mp3 --title-snake          # Only format *.mp3 audio files
-  glaze -r -s                         # Recursively sanitize all files with Safe ASCII
-  glaze --kebab --lower-ext           # Turn into kebab-case with lowercase extensions
-  glaze -n                            # Dry run preview of planned renames
-  glaze undo                          # Revert the last executed batch rename
-""",
+        add_help=False,
     )
 
     parser.add_argument("paths", nargs="*", help="Optional specific files or directories to process.")
@@ -267,7 +302,6 @@ Examples:
     parser.add_argument("-n", "--dry-run", action="store_true", help="Simulate changes without renaming any files.")
     parser.add_argument("-i", "--interactive", action="store_true", help="Prompt for confirmation before applying renames.")
     parser.add_argument("-y", "--yes", action="store_true", help="Bypass confirmation prompt.")
-    parser.add_argument("-v", "--version", action="version", version="glaze 0.1.0")
 
     # Case conversions
     case_group = parser.add_mutually_exclusive_group()
@@ -280,11 +314,6 @@ Examples:
     case_group.add_argument("--lower", dest="case_mode", action="store_const", const="lower", help="lowercase")
     case_group.add_argument("--upper", dest="case_mode", action="store_const", const="upper", help="UPPERCASE")
 
-    # Handle 'glaze undo' subcommand
-    if len(sys.argv) > 1 and sys.argv[1] == "undo":
-        success = run_undo()
-        sys.exit(0 if success else 1)
-
     args = parser.parse_args()
     case_mode = args.case_mode or "title_snake"
 
@@ -293,10 +322,10 @@ Examples:
         ui.error(f"Directory '{target_dir}' does not exist.")
         sys.exit(1)
 
-    ui.action("Initialized Glaze batch rename engine", symbol="🚀")
-    scope_str = "recursive" if args.recursive else "current"
+    ui.header(f"{ui.app_name.upper()} BATCH RENAME ENGINE", width=76)
+    scope_str = "recursive" if args.recursive else "current directory"
     safe_str = "Safe ASCII" if args.safe else "standard"
-    ui.info(f"Target: {ui.bold(str(target_dir))} | Mode: {ui.green(case_mode)} | Scope: {scope_str} | Safe: {safe_str}", symbol="📂")
+    ui.info(f"Target: {ui.cyan(str(target_dir))} | Mode: {ui.green(case_mode)} | Scope: {scope_str} | Safe: {safe_str}", symbol="📂")
 
     if args.dry_run:
         ui.warn("DRY RUN mode active: simulating renames without modifying files")
@@ -330,10 +359,10 @@ Examples:
     print()
     for p in plans:
         if p in collisions:
-            print(f"  {ui.yellow('[COLLISION SKIPPED]')} '{p.relative_old}' → target '{p.relative_new}' exists")
+            print(f"  {ui.yellow('[COLLISION SKIPPED]')} {ui.dim(repr(p.relative_old))} {ui.yellow('⇸')} target {ui.dim(repr(p.relative_new))} exists")
         else:
             tag = "DIR" if p.is_dir else "FILE"
-            print(f"  {ui.dim(f'[{tag}]')} '{p.relative_old}' → {ui.green(p.relative_new)}")
+            print(f"  {ui.dim(f'[{tag}]')} {ui.dim(repr(p.relative_old))} {ui.cyan('→')} {ui.bold_green(p.relative_new)}")
 
     print()
     ui.info(f"Found {ui.bold(str(len(plans)))} item(s) to rename. ({len(collisions)} collisions skipped)", symbol="📊")

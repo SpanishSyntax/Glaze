@@ -5,11 +5,26 @@ import sys
 
 
 class UI:
-    def __init__(self, app_name: str = "glaze", icon: str = "✨", badge_color: str = "0;36"):
-        self.app_name = app_name
+    def __init__(self, app_name: str | None = None, icon: str = "✨", badge_color: str = "1;36"):
+        self._app_name = app_name
         self.icon = icon
         self.badge_color = badge_color
-        self.use_color = sys.stdout.isatty() and "NO_COLOR" not in os.environ
+
+    @property
+    def app_name(self) -> str:
+        if self._app_name:
+            return self._app_name
+        if sys.argv and "capspace" in sys.argv[0]:
+            return "capspace"
+        return "glaze"
+
+    @property
+    def use_color(self) -> bool:
+        if "NO_COLOR" in os.environ:
+            return False
+        if os.environ.get("CLICOLOR_FORCE", "0") != "0" or "FORCE_COLOR" in os.environ:
+            return True
+        return sys.stdout.isatty() or os.environ.get("COLORTERM") in ("truecolor", "24bit")
 
     def style(self, text: str, code: str) -> str:
         return f"\033[{code}m{text}\033[0m" if self.use_color else text
@@ -25,6 +40,9 @@ class UI:
 
     def cyan(self, text: str) -> str:
         return self.style(text, "0;36")
+
+    def bold_cyan(self, text: str) -> str:
+        return self.style(text, "1;36")
 
     def green(self, text: str) -> str:
         return self.style(text, "0;32")
@@ -51,7 +69,7 @@ class UI:
         print(self.status("✔", msg, "1;32"))
 
     def info(self, msg: str, symbol: str = "ℹ️"):
-        print(self.status(symbol, msg, "1;34"))
+        print(self.status(symbol, msg, "1;36"))
 
     def warn(self, msg: str):
         print(self.status("⚠️", msg, "1;33"))
@@ -60,15 +78,15 @@ class UI:
         print(self.status("✘", msg, "1;31"), file=sys.stderr)
 
     def action(self, msg: str, symbol: str = "⚡"):
-        print(self.status(symbol, msg, "0;36"))
+        print(self.status(symbol, msg, "1;36"))
 
     def header(self, title: str, width: int = 76):
-        border = self.cyan("=" * width)
+        border = self.bold_cyan("=" * width)
         print(f"\n{border}\n {self.bold(title)}\n{border}")
 
     def subheader(self, title: str, width: int = 76):
         rule_part = self.dim("-" * max(0, width - len(title) - 5))
-        print(f"\n{self.cyan(f'--- {title}')} {rule_part}")
+        print(f"\n{self.bold_cyan(f'--- {title}')} {rule_part}")
 
 
 ui = UI()
