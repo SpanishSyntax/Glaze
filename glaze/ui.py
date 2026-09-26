@@ -5,18 +5,10 @@ import sys
 
 
 class UI:
-    def __init__(self, app_name: str | None = None, icon: str = "✨", badge_color: str = "1;36"):
-        self._app_name = app_name
+    def __init__(self, app_name: str = "glaze", icon: str = "✨", badge_color: str = "1;36"):
+        self.app_name = app_name
         self.icon = icon
         self.badge_color = badge_color
-
-    @property
-    def app_name(self) -> str:
-        if self._app_name:
-            return self._app_name
-        if sys.argv and "capspace" in sys.argv[0]:
-            return "capspace"
-        return "glaze"
 
     @property
     def use_color(self) -> bool:

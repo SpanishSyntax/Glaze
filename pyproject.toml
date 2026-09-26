@@ -23,7 +23,6 @@ dependencies = []
 
 [project.scripts]
 glaze = "glaze.cli:main"
-capspace = "glaze.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

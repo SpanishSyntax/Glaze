@@ -2,7 +2,7 @@
 
 > **Universal Filename Sanitizer, Case Transformer & Batch Rename Engine**
 
-Glaze (formerly `capspace`) is an ultra-fast, opinionated batch renaming utility designed to normalize messy filenames, standardize project conventions, and perform robust case transformations across large directories.
+Glaze is an ultra-fast, opinionated batch renaming utility designed to normalize messy filenames, standardize project conventions, and perform robust case transformations across large directories.
 
 ---
 
@@ -23,7 +23,6 @@ Glaze (formerly `capspace`) is an ultra-fast, opinionated batch renaming utility
 - 📁 **Directory Renaming (`--dirs`)**: Option to sanitize and rename directory names alongside regular files.
 - 🛡️ **Collision Protection**: Pre-checks target paths and prevents accidental overwrites if a file with the destination name already exists.
 - 🧪 **Dry-Run Simulation (`-n / --dry-run`)**: Preview all planned changes in a colored diff view without touching the filesystem.
-- 🤝 **Dual Binary Compatibility**: Installs both `glaze` and `capspace` binaries, preserving 100% muscle memory and script compatibility.
 - 🪶 **Zero Host Dependencies**: Pure standard library core (<20ms execution time).
 
 ---
@@ -116,7 +115,7 @@ Add Glaze to your `flake.nix`:
 }
 ```
 
-Once enabled, both `glaze` and `capspace` are available in your `$PATH`.
+Once enabled, `glaze` is available in your `$PATH`.
 
 ---
 

@@ -51,10 +51,6 @@
           type = "app";
           program = "${glazePackage}/bin/glaze";
         };
-        capspace = {
-          type = "app";
-          program = "${glazePackage}/bin/capspace";
-        };
       };
 
       devShells.default = pkgs.mkShell {
