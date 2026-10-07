@@ -141,6 +141,18 @@ def run_undo(dry_run: bool = False, list_only: bool = False) -> bool:
         ui.info("Dry-run preview only. No files were modified.", symbol="💡")
         return True
 
+    if sys.stdin.isatty():
+        confirm = ui.select(
+            f"Revert {len(data)} rename operation(s)?",
+            [
+                ("yes", f"Yes, revert {len(data)} operation(s)"),
+                ("no", "No, cancel"),
+            ],
+        )
+        if confirm != "yes":
+            ui.warn("Undo aborted by user.")
+            return False
+
     ui.action(f"Reverting {len(data)} rename operation(s)...", symbol="🔄")
     reverted = 0
     for item in reversed(data):
@@ -372,8 +384,23 @@ def main():
     case_group.add_argument("--lower", dest="case_mode", action="store_const", const="lower", help="lowercase")
     case_group.add_argument("--upper", dest="case_mode", action="store_const", const="upper", help="UPPERCASE")
 
-    args = parser.parse_args()
-    case_mode = args.case_mode or "title_snake"
+    CASE_OPTIONS = [
+        ("title_snake", "Title_Snake_Case (e.g. My_Document_File.pdf)"),
+        ("snake", "snake_case (e.g. my_document_file.pdf)"),
+        ("kebab", "kebab-case (e.g. my-document-file.pdf)"),
+        ("pascal", "PascalCase (e.g. MyDocumentFile.pdf)"),
+        ("camel", "camelCase (e.g. myDocumentFile.pdf)"),
+        ("lower", "lowercase (e.g. mydocumentfile.pdf)"),
+        ("upper", "UPPERCASE (e.g. MYDOCUMENTFILE.pdf)"),
+        ("upper_snake", "UPPER_SNAKE_CASE (e.g. MY_DOCUMENT_FILE.pdf)"),
+    ]
+
+    is_interactive_session = args.interactive or (len(sys.argv) == 1 and sys.stdin.isatty())
+
+    if not args.case_mode and is_interactive_session:
+        case_mode = ui.select("Select target case format:", CASE_OPTIONS)
+    else:
+        case_mode = args.case_mode or "title_snake"
 
     target_dir = Path(args.dir).resolve()
     if not target_dir.exists():
@@ -463,15 +490,17 @@ def main():
         ui.error("No renames can be performed safely without collisions.")
         sys.exit(1)
 
-    # Interactive confirmation prompt if requested
-    if args.interactive and not args.yes:
-        try:
-            ans = input(f"\nApply {len(executable_plans)} rename operation(s)? [y/N]: ").strip().lower()
-            if ans not in ("y", "yes"):
-                ui.warn("Aborted by user.")
-                sys.exit(0)
-        except (KeyboardInterrupt, EOFError):
-            print("\nAborted.")
+    # Interactive confirmation prompt if requested or in bare TTY mode
+    if is_interactive_session and not args.yes:
+        confirm = ui.select(
+            f"Apply {len(executable_plans)} rename operation(s)?",
+            [
+                ("yes", f"Yes, apply {len(executable_plans)} rename(s)"),
+                ("no", "No, cancel"),
+            ],
+        )
+        if confirm != "yes":
+            ui.warn("Aborted by user.")
             sys.exit(0)
 
     # Execute renames
