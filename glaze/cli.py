@@ -384,6 +384,8 @@ def main():
     case_group.add_argument("--lower", dest="case_mode", action="store_const", const="lower", help="lowercase")
     case_group.add_argument("--upper", dest="case_mode", action="store_const", const="upper", help="UPPERCASE")
 
+    args = parser.parse_args()
+
     CASE_OPTIONS = [
         ("title_snake", "Title_Snake_Case (e.g. My_Document_File.pdf)"),
         ("snake", "snake_case (e.g. my_document_file.pdf)"),
