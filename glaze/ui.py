@@ -18,7 +18,9 @@ def strip_ansi(text: str) -> str:
 
 
 class UI:
-    def __init__(self, app_name: str = "glaze", icon: str = "✨", badge_color: str = "1;36"):
+    def __init__(
+        self, app_name: str = "glaze", icon: str = "✨", badge_color: str = "1;36"
+    ):
         self.app_name = app_name
         self.icon = icon
         self.badge_color = badge_color
@@ -37,7 +39,10 @@ class UI:
             return False
         if os.environ.get("CLICOLOR_FORCE", "0") != "0" or "FORCE_COLOR" in os.environ:
             return True
-        return sys.stdout.isatty() or os.environ.get("COLORTERM") in ("truecolor", "24bit")
+        return sys.stdout.isatty() or os.environ.get("COLORTERM") in (
+            "truecolor",
+            "24bit",
+        )
 
     def style(self, text: str, code: str) -> str:
         return f"\033[{code}m{text}\033[0m" if self.use_color else text
@@ -161,7 +166,9 @@ class UI:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
     @staticmethod
-    def _fit_line(prefix: str, label_styled: str, label_plain: str, desc: str, max_w: int) -> str:
+    def _fit_line(
+        prefix: str, label_styled: str, label_plain: str, desc: str, max_w: int
+    ) -> str:
         """
         Ensures a menu item line never exceeds max_w visual columns.
         Prevents terminal wrapping so cursor up/down operations remain 100% in sync.
@@ -169,12 +176,12 @@ class UI:
         prefix_len = len(strip_ansi(prefix))
         avail = max_w - prefix_len
         if avail <= 5:
-            return prefix + label_plain[:max(0, avail)]
+            return prefix + label_plain[: max(0, avail)]
 
         if not desc:
             if len(label_plain) <= avail:
                 return f"{prefix}{label_styled}"
-            return f"{prefix}{label_plain[:max(0, avail - 3)]}..."
+            return f"{prefix}{label_plain[: max(0, avail - 3)]}..."
 
         # Both label and desc present
         if len(label_plain) + 2 + len(desc) <= avail:
@@ -183,13 +190,13 @@ class UI:
         # Fit label and truncated description
         if len(label_plain) + 6 <= avail:
             rem = avail - len(label_plain) - 4
-            trunc_desc = desc[:max(0, rem)] + "..."
+            trunc_desc = desc[: max(0, rem)] + "..."
             return f"{prefix}{label_styled} \033[90m{trunc_desc}\033[0m"
 
         # Narrow terminal: label only
         if len(label_plain) <= avail:
             return f"{prefix}{label_styled}"
-        return f"{prefix}{label_plain[:max(0, avail - 3)]}..."
+        return f"{prefix}{label_plain[: max(0, avail - 3)]}..."
 
     @staticmethod
     def _normalize_options(options: Sequence[Any]) -> list[tuple[str, str, str]]:
@@ -260,16 +267,28 @@ class UI:
                     scroll_offset = current
                 elif current >= scroll_offset + max_visible:
                     scroll_offset = current - max_visible + 1
-                scroll_offset = max(0, min(scroll_offset, max(0, len(items) - max_visible)))
+                scroll_offset = max(
+                    0, min(scroll_offset, max(0, len(items) - max_visible))
+                )
 
                 lines = []
                 # Header
                 raw_title = f"{self.badge()} {self.bold(title)}"
-                lines.append(raw_title if len(strip_ansi(raw_title)) <= max_w else raw_title[:max_w])
+                lines.append(
+                    raw_title
+                    if len(strip_ansi(raw_title)) <= max_w
+                    else raw_title[:max_w]
+                )
 
                 # Subtitle navigation hint
-                raw_help = self.dim("  (Use ↑/↓ or j/k to navigate, Enter to select, q/Ctrl+C to cancel)")
-                lines.append(raw_help if len(strip_ansi(raw_help)) <= max_w else self.dim("  (↑/↓: navigate, Enter: select)"))
+                raw_help = self.dim(
+                    "  (Use ↑/↓ or j/k to navigate, Enter to select, q/Ctrl+C to cancel)"
+                )
+                lines.append(
+                    raw_help
+                    if len(strip_ansi(raw_help)) <= max_w
+                    else self.dim("  (↑/↓: navigate, Enter: select)")
+                )
                 lines.append("")
 
                 # Up indicator if scrolled
@@ -325,7 +344,9 @@ class UI:
             for _ in range(rendered_lines):
                 sys.stdout.write("\033[2K\r\n")
             sys.stdout.write(f"\033[{rendered_lines}A\r")
-            print(f"{self.badge()} {self.dim(title)} {self.bold_green(items[current][1])}")
+            print(
+                f"{self.badge()} {self.dim(title)} {self.bold_green(items[current][1])}"
+            )
             sys.stdout.flush()
             return items[current][0]
         finally:
@@ -385,14 +406,26 @@ class UI:
                     scroll_offset = current
                 elif current >= scroll_offset + max_visible:
                     scroll_offset = current - max_visible + 1
-                scroll_offset = max(0, min(scroll_offset, max(0, len(items) - max_visible)))
+                scroll_offset = max(
+                    0, min(scroll_offset, max(0, len(items) - max_visible))
+                )
 
                 lines = []
                 raw_title = f"{self.badge()} {self.bold(title)}"
-                lines.append(raw_title if len(strip_ansi(raw_title)) <= max_w else raw_title[:max_w])
+                lines.append(
+                    raw_title
+                    if len(strip_ansi(raw_title)) <= max_w
+                    else raw_title[:max_w]
+                )
 
-                raw_help = self.dim("  (↑/↓: navigate, Space: toggle, a: all, Enter: confirm, q/Ctrl+C: cancel)")
-                lines.append(raw_help if len(strip_ansi(raw_help)) <= max_w else self.dim("  (↑/↓: nav, Space: toggle, Enter: ok)"))
+                raw_help = self.dim(
+                    "  (↑/↓: navigate, Space: toggle, a: all, Enter: confirm, q/Ctrl+C: cancel)"
+                )
+                lines.append(
+                    raw_help
+                    if len(strip_ansi(raw_help)) <= max_w
+                    else self.dim("  (↑/↓: nav, Space: toggle, Enter: ok)")
+                )
                 lines.append("")
 
                 # Up indicator if scrolled
@@ -408,7 +441,9 @@ class UI:
 
                     if actual_idx == current:
                         pointer = self.bold_cyan("❯")
-                        styled_lbl = self.bold_cyan(label) if is_checked else self.bold(label)
+                        styled_lbl = (
+                            self.bold_cyan(label) if is_checked else self.bold(label)
+                        )
                     else:
                         pointer = " "
                         styled_lbl = self.green(label) if is_checked else label
@@ -463,7 +498,9 @@ class UI:
                 sys.stdout.write("\033[2K\r\n")
             sys.stdout.write(f"\033[{rendered_lines}A\r")
             chosen_labels = [lbl for k, lbl, _ in items if k in selected_keys]
-            print(f"{self.badge()} {self.dim(title)} {self.bold_green(', '.join(chosen_labels) if chosen_labels else 'none')}")
+            print(
+                f"{self.badge()} {self.dim(title)} {self.bold_green(', '.join(chosen_labels) if chosen_labels else 'none')}"
+            )
             sys.stdout.flush()
             return [k for k, _, _ in items if k in selected_keys]
         finally:

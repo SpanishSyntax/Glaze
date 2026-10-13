@@ -137,7 +137,9 @@ def run_undo(dry_run: bool = False, list_only: bool = False) -> bool:
                 tag = ui.red("[COLLISION]")
             else:
                 tag = ui.green("[REVERSIBLE]")
-            print(f"  {tag} {ui.dim(new_p.name)} {ui.cyan('→')} {ui.bold(old_p.name)}  {ui.dim(f'({new_p})')}")
+            print(
+                f"  {tag} {ui.dim(new_p.name)} {ui.cyan('→')} {ui.bold(old_p.name)}  {ui.dim(f'({new_p})')}"
+            )
         ui.info("Dry-run preview only. No files were modified.", symbol="💡")
         return True
 
@@ -160,11 +162,15 @@ def run_undo(dry_run: bool = False, list_only: bool = False) -> bool:
         new_path = Path(item["new"])
 
         if not new_path.exists():
-            print(f"  {ui.yellow('SKIP')} Current file '{new_path}' not found, skipping.")
+            print(
+                f"  {ui.yellow('SKIP')} Current file '{new_path}' not found, skipping."
+            )
             continue
 
         if old_path.exists():
-            print(f"  {ui.red('COLLISION')} Original path '{old_path}' already exists, skipping.")
+            print(
+                f"  {ui.red('COLLISION')} Original path '{old_path}' already exists, skipping."
+            )
             continue
 
         try:
@@ -172,7 +178,10 @@ def run_undo(dry_run: bool = False, list_only: bool = False) -> bool:
             print(f"  {ui.green('REVERTED')} '{new_path.name}' → '{old_path.name}'")
             reverted += 1
         except Exception as e:
-            print(f"  {ui.red('ERROR')} Failed to revert '{new_path}': {e}", file=sys.stderr)
+            print(
+                f"  {ui.red('ERROR')} Failed to revert '{new_path}': {e}",
+                file=sys.stderr,
+            )
 
     log_file.unlink(missing_ok=True)
     ui.success(f"Successfully reverted {reverted} file(s).")
@@ -256,7 +265,11 @@ def scan_directory(
 
         target_path = p.parent / new_filename
         rel_old = str(p.relative_to(root)) if p != root else str(p)
-        rel_new = str(target_path.relative_to(root)) if target_path != root else str(target_path)
+        rel_new = (
+            str(target_path.relative_to(root))
+            if target_path != root
+            else str(target_path)
+        )
 
         plans.append(
             RenamePlan(
@@ -347,7 +360,9 @@ def main():
 
     # Handle 'glaze undo' and 'glaze log'
     if len(sys.argv) > 1 and sys.argv[1] in ("undo", "log"):
-        is_list = sys.argv[1] == "log" or any(a in ("--list", "-l") for a in sys.argv[2:])
+        is_list = sys.argv[1] == "log" or any(
+            a in ("--list", "-l") for a in sys.argv[2:]
+        )
         is_dry = any(a in ("-n", "--dry-run") for a in sys.argv[2:])
         success = run_undo(dry_run=is_dry, list_only=is_list)
         sys.exit(0 if success else 1)
@@ -357,32 +372,143 @@ def main():
         add_help=False,
     )
 
-    parser.add_argument("paths", nargs="*", help="Optional specific files or directories to process.")
-    parser.add_argument("-d", "--dir", default=".", help="Target directory (Default: current directory).")
-    parser.add_argument("-e", "--ext", default="*", help="Filter by file extension (e.g., pdf, mp3, txt).")
-    parser.add_argument("-a", "--all", "--include-hidden", "--hidden", dest="include_hidden", action="store_true", help="Include hidden files (always excludes .git).")
-    parser.add_argument("-s", "--safe", action="store_true", help="Safe ASCII: strip non-alphanumeric chars & normalize accents.")
-    parser.add_argument("-l", "--lower-ext", action="store_true", help="Convert file extensions to lowercase.")
-    parser.add_argument("-r", "--recursive", action="store_true", help="Recursively process subdirectories.")
-    parser.add_argument("--dirs", action="store_true", help="Also rename directory names.")
-    parser.add_argument("--on-conflict", choices=["skip", "abort", "suffix"], default="skip", help="Conflict resolution: skip, abort, suffix (Default: skip).")
-    parser.add_argument("-n", "--dry-run", action="store_true", help="Simulate changes without renaming any files.")
-    parser.add_argument("-i", "--interactive", action="store_true", help="Prompt for confirmation before applying renames.")
-    parser.add_argument("-y", "--yes", action="store_true", help="Bypass confirmation prompt.")
-    parser.add_argument("--color", choices=["auto", "always", "never"], default="auto", help="Color output mode.")
-    parser.add_argument("--no-color", action="store_true", help="Disable colored output.")
-    parser.add_argument("-V", "-v", "--version", action="store_true", help="Show version and exit.")
+    parser.add_argument(
+        "paths", nargs="*", help="Optional specific files or directories to process."
+    )
+    parser.add_argument(
+        "-d",
+        "--dir",
+        default=".",
+        help="Target directory (Default: current directory).",
+    )
+    parser.add_argument(
+        "-e",
+        "--ext",
+        default="*",
+        help="Filter by file extension (e.g., pdf, mp3, txt).",
+    )
+    parser.add_argument(
+        "-a",
+        "--all",
+        "--include-hidden",
+        "--hidden",
+        dest="include_hidden",
+        action="store_true",
+        help="Include hidden files (always excludes .git).",
+    )
+    parser.add_argument(
+        "-s",
+        "--safe",
+        action="store_true",
+        help="Safe ASCII: strip non-alphanumeric chars & normalize accents.",
+    )
+    parser.add_argument(
+        "-l",
+        "--lower-ext",
+        action="store_true",
+        help="Convert file extensions to lowercase.",
+    )
+    parser.add_argument(
+        "-r",
+        "--recursive",
+        action="store_true",
+        help="Recursively process subdirectories.",
+    )
+    parser.add_argument(
+        "--dirs", action="store_true", help="Also rename directory names."
+    )
+    parser.add_argument(
+        "--on-conflict",
+        choices=["skip", "abort", "suffix"],
+        default="skip",
+        help="Conflict resolution: skip, abort, suffix (Default: skip).",
+    )
+    parser.add_argument(
+        "-n",
+        "--dry-run",
+        action="store_true",
+        help="Simulate changes without renaming any files.",
+    )
+    parser.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        help="Prompt for confirmation before applying renames.",
+    )
+    parser.add_argument(
+        "-y", "--yes", action="store_true", help="Bypass confirmation prompt."
+    )
+    parser.add_argument(
+        "--color",
+        choices=["auto", "always", "never"],
+        default="auto",
+        help="Color output mode.",
+    )
+    parser.add_argument(
+        "--no-color", action="store_true", help="Disable colored output."
+    )
+    parser.add_argument(
+        "-V", "-v", "--version", action="store_true", help="Show version and exit."
+    )
 
     # Case conversions
     case_group = parser.add_mutually_exclusive_group()
-    case_group.add_argument("--title-snake", dest="case_mode", action="store_const", const="title_snake", help="Title_Snake_Case (Default)")
-    case_group.add_argument("--snake", dest="case_mode", action="store_const", const="snake", help="standard_snake_case")
-    case_group.add_argument("--upper-snake", dest="case_mode", action="store_const", const="upper_snake", help="UPPER_SNAKE_CASE")
-    case_group.add_argument("--kebab", dest="case_mode", action="store_const", const="kebab", help="standard-kebab-case")
-    case_group.add_argument("--pascal", dest="case_mode", action="store_const", const="pascal", help="PascalCase")
-    case_group.add_argument("--camel", dest="case_mode", action="store_const", const="camel", help="camelCase")
-    case_group.add_argument("--lower", dest="case_mode", action="store_const", const="lower", help="lowercase")
-    case_group.add_argument("--upper", dest="case_mode", action="store_const", const="upper", help="UPPERCASE")
+    case_group.add_argument(
+        "--title-snake",
+        dest="case_mode",
+        action="store_const",
+        const="title_snake",
+        help="Title_Snake_Case (Default)",
+    )
+    case_group.add_argument(
+        "--snake",
+        dest="case_mode",
+        action="store_const",
+        const="snake",
+        help="standard_snake_case",
+    )
+    case_group.add_argument(
+        "--upper-snake",
+        dest="case_mode",
+        action="store_const",
+        const="upper_snake",
+        help="UPPER_SNAKE_CASE",
+    )
+    case_group.add_argument(
+        "--kebab",
+        dest="case_mode",
+        action="store_const",
+        const="kebab",
+        help="standard-kebab-case",
+    )
+    case_group.add_argument(
+        "--pascal",
+        dest="case_mode",
+        action="store_const",
+        const="pascal",
+        help="PascalCase",
+    )
+    case_group.add_argument(
+        "--camel",
+        dest="case_mode",
+        action="store_const",
+        const="camel",
+        help="camelCase",
+    )
+    case_group.add_argument(
+        "--lower",
+        dest="case_mode",
+        action="store_const",
+        const="lower",
+        help="lowercase",
+    )
+    case_group.add_argument(
+        "--upper",
+        dest="case_mode",
+        action="store_const",
+        const="upper",
+        help="UPPERCASE",
+    )
 
     args = parser.parse_args()
 
@@ -397,7 +523,9 @@ def main():
         ("upper_snake", "UPPER_SNAKE_CASE (e.g. MY_DOCUMENT_FILE.pdf)"),
     ]
 
-    is_interactive_session = args.interactive or (len(sys.argv) == 1 and sys.stdin.isatty())
+    is_interactive_session = args.interactive or (
+        len(sys.argv) == 1 and sys.stdin.isatty()
+    )
 
     if not args.case_mode and is_interactive_session:
         case_mode = ui.select("Select target case format:", CASE_OPTIONS)
@@ -412,8 +540,13 @@ def main():
     ui.header(f"{ui.app_name.upper()} BATCH RENAME ENGINE", width=76)
     scope_str = "recursive" if args.recursive else "current directory"
     safe_str = "Safe ASCII" if args.safe else "standard"
-    hidden_str = "all (including hidden)" if args.include_hidden else "standard (hidden skipped)"
-    ui.info(f"Target: {ui.cyan(str(target_dir))} | Mode: {ui.green(case_mode)} | Scope: {scope_str} | Hidden: {hidden_str}", symbol="📂")
+    hidden_str = (
+        "all (including hidden)" if args.include_hidden else "standard (hidden skipped)"
+    )
+    ui.info(
+        f"Target: {ui.cyan(str(target_dir))} | Mode: {ui.green(case_mode)} | Scope: {scope_str} | Hidden: {hidden_str}",
+        symbol="📂",
+    )
 
     if args.dry_run:
         ui.warn("DRY RUN mode active: simulating renames without modifying files")
@@ -430,7 +563,9 @@ def main():
     )
 
     if not plans:
-        ui.success("All filenames already conform to requested styling. Nothing to rename.")
+        ui.success(
+            "All filenames already conform to requested styling. Nothing to rename."
+        )
         sys.exit(0)
 
     # Detect collisions and conflicts
@@ -439,10 +574,14 @@ def main():
     seen_destinations: set[Path] = set()
 
     for p in plans:
-        is_collision = (p.new_path.exists() and p.new_path != p.original) or (p.new_path in seen_destinations)
+        is_collision = (p.new_path.exists() and p.new_path != p.original) or (
+            p.new_path in seen_destinations
+        )
         if is_collision:
             if args.on_conflict == "abort":
-                ui.error(f"Conflict detected: target '{p.relative_new}' already exists for '{p.relative_old}'. Aborting.")
+                ui.error(
+                    f"Conflict detected: target '{p.relative_new}' already exists for '{p.relative_old}'. Aborting."
+                )
                 sys.exit(1)
             elif args.on_conflict == "suffix":
                 # Generate unique suffixed name
@@ -456,15 +595,26 @@ def main():
                 counter = 1
                 resolved_path = None
                 while True:
-                    suffixed_name = f"{base_stem}_{counter}.{ext}" if ext else f"{base_stem}_{counter}"
+                    suffixed_name = (
+                        f"{base_stem}_{counter}.{ext}"
+                        if ext
+                        else f"{base_stem}_{counter}"
+                    )
                     candidate_path = p.original.parent / suffixed_name
-                    if not candidate_path.exists() and candidate_path not in seen_destinations:
+                    if (
+                        not candidate_path.exists()
+                        and candidate_path not in seen_destinations
+                    ):
                         resolved_path = candidate_path
                         break
                     counter += 1
 
                 p.new_path = resolved_path
-                p.relative_new = str(resolved_path.relative_to(target_dir)) if resolved_path != target_dir else str(resolved_path)
+                p.relative_new = (
+                    str(resolved_path.relative_to(target_dir))
+                    if resolved_path != target_dir
+                    else str(resolved_path)
+                )
                 executable_plans.append(p)
                 seen_destinations.add(p.new_path)
             else:  # skip
@@ -476,16 +626,26 @@ def main():
     print()
     for p in plans:
         if p in collisions:
-            print(f"  {ui.yellow('[COLLISION SKIPPED]')} {ui.dim(repr(p.relative_old))} {ui.yellow('⇸')} target {ui.dim(repr(p.relative_new))} exists")
+            print(
+                f"  {ui.yellow('[COLLISION SKIPPED]')} {ui.dim(repr(p.relative_old))} {ui.yellow('⇸')} target {ui.dim(repr(p.relative_new))} exists"
+            )
         else:
             tag = "DIR" if p.is_dir else "FILE"
-            print(f"  {ui.dim(f'[{tag}]')} {ui.dim(repr(p.relative_old))} {ui.cyan('→')} {ui.bold_green(p.relative_new)}")
+            print(
+                f"  {ui.dim(f'[{tag}]')} {ui.dim(repr(p.relative_old))} {ui.cyan('→')} {ui.bold_green(p.relative_new)}"
+            )
 
     print()
-    ui.info(f"Found {ui.bold(str(len(plans)))} item(s) to rename. ({len(collisions)} collisions skipped)", symbol="📊")
+    ui.info(
+        f"Found {ui.bold(str(len(plans)))} item(s) to rename. ({len(collisions)} collisions skipped)",
+        symbol="📊",
+    )
 
     if args.dry_run:
-        ui.info("Dry-run complete. Re-run without -n to apply renames permanently.", symbol="💡")
+        ui.info(
+            "Dry-run complete. Re-run without -n to apply renames permanently.",
+            symbol="💡",
+        )
         sys.exit(0)
 
     if not executable_plans:
@@ -516,7 +676,10 @@ def main():
             executed_ops.append((str(p.original), str(p.new_path)))
             renamed_count += 1
         except Exception as e:
-            print(f"  {ui.red('FAILED')} '{p.relative_old}' → '{p.relative_new}': {e}", file=sys.stderr)
+            print(
+                f"  {ui.red('FAILED')} '{p.relative_old}' → '{p.relative_new}': {e}",
+                file=sys.stderr,
+            )
 
     save_undo_log(executed_ops)
     ui.success(f"Successfully renamed {renamed_count} item(s).")
