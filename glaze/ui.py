@@ -6,8 +6,10 @@ import select
 import shutil
 import sys
 import termios
+import threading
 import tty
-from typing import Any, Sequence
+from contextlib import contextmanager
+from typing import Any, Iterator, Sequence
 
 ANSI_REGEX = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
 
@@ -15,6 +17,62 @@ ANSI_REGEX = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
 def strip_ansi(text: str) -> str:
     """Strips ANSI escape codes to measure true visual character length."""
     return ANSI_REGEX.sub("", text)
+
+
+class Spinner:
+    """Zero-dependency braille terminal spinner for background operations."""
+
+    FRAMES = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
+
+    def __init__(self, ui_instance: "UI", message: str):
+        self.ui = ui_instance
+        self.message = message
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._is_tty = sys.stdout.isatty()
+
+    def update(self, message: str):
+        """Updates the active spinner status text."""
+        self.message = message
+
+    def _spin(self):
+        idx = 0
+        while not self._stop_event.is_set():
+            frame = self.ui.bold_cyan(self.FRAMES[idx % len(self.FRAMES)])
+            line = f"\r\033[2K{self.ui.badge()} {frame} {self.message}"
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            idx += 1
+            self._stop_event.wait(0.08)
+
+    def start(self):
+        if not self._is_tty:
+            self.ui.action(self.message, symbol="⏳")
+            return
+        sys.stdout.write("\033[?25l")
+        sys.stdout.flush()
+        self._thread = threading.Thread(target=self._spin, daemon=True)
+        self._thread.start()
+
+    def stop(self, final_message: str | None = None, ok: bool = True):
+        if not self._is_tty:
+            if final_message:
+                if ok:
+                    self.ui.success(final_message)
+                else:
+                    self.ui.error(final_message)
+            return
+
+        self._stop_event.set()
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=0.5)
+        sys.stdout.write("\r\033[2K\033[?25h")
+        sys.stdout.flush()
+        if final_message:
+            if ok:
+                self.ui.success(final_message)
+            else:
+                self.ui.error(final_message)
 
 
 class UI:
@@ -105,6 +163,64 @@ class UI:
     def subheader(self, title: str, width: int = 76):
         rule_part = self.dim("-" * max(0, width - len(title) - 5))
         print(f"\n{self.cyan(f'--- {title}')} {rule_part}")
+
+    def panel(
+        self,
+        title: str,
+        lines: Sequence[str] | str,
+        border_color: str = "0;36",
+        width: int = 76,
+        stream: Any = None,
+    ):
+        """Renders a width-aware rounded box panel (╭─╮│╰─╯)."""
+        out = stream or sys.stdout
+        body_lines = lines.splitlines() if isinstance(lines, str) else list(lines)
+
+        term_cols = shutil.get_terminal_size(fallback=(80, 24)).columns
+        box_w = min(width, max(36, term_cols - 2))
+        inner_w = box_w - 4
+
+        title_clean = strip_ansi(title)
+        title_segment = f" {title} " if title else ""
+        top_fill = max(1, box_w - 3 - len(title_clean) - (2 if title else 0))
+        top_border = (
+            self.style("╭─", border_color)
+            + (self.bold(title_segment) if title else "")
+            + self.style("─" * top_fill + "╮", border_color)
+        )
+        bottom_border = self.style("╰" + "─" * (box_w - 2) + "╯", border_color)
+        side = self.style("│", border_color)
+
+        print(top_border, file=out)
+        for raw_line in body_lines:
+            vis_len = len(strip_ansi(raw_line))
+            if vis_len <= inner_w:
+                pad = " " * (inner_w - vis_len)
+                print(f"{side} {raw_line}{pad} {side}", file=out)
+            else:
+                plain = strip_ansi(raw_line)
+                clipped = plain[: max(0, inner_w - 3)] + "..."
+                pad = " " * max(0, inner_w - len(clipped))
+                print(f"{side} {clipped}{pad} {side}", file=out)
+        print(bottom_border, file=out)
+
+    def error_panel(self, title: str, lines: Sequence[str] | str):
+        """Renders a formatted error diagnostic panel to stderr."""
+        styled_title = self.red(f"✘ {title}")
+        self.panel(styled_title, lines, border_color="1;31", stream=sys.stderr)
+
+    @contextmanager
+    def spinner(self, message: str) -> Iterator[Spinner]:
+        """Context manager for zero-dependency braille console spinners."""
+        sp = Spinner(self, message)
+        sp.start()
+        try:
+            yield sp
+        except Exception:
+            sp.stop()
+            raise
+        else:
+            sp.stop()
 
     # -------------------------------------------------------------------------
     # Robust Terminal Engine (Arrow Keys & Non-Wrapping Width Handling)

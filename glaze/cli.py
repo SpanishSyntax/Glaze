@@ -3,11 +3,29 @@ import json
 import os
 import re
 import sys
+import tomllib
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
+from glaze import __version__
 from glaze.ui import ui
+
+
+def load_user_config() -> dict[str, Any]:
+    """Loads optional user defaults from ~/.config/glaze/glaze.toml."""
+    xdg_config = os.environ.get("XDG_CONFIG_HOME")
+    base = Path(xdg_config) if xdg_config else Path.home() / ".config"
+    cfg_path = base / "glaze" / "glaze.toml"
+    if cfg_path.is_file():
+        try:
+            with cfg_path.open("rb") as f:
+                data = tomllib.load(f)
+            return data.get("general", data) if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+    return {}
 
 
 @dataclass
@@ -348,6 +366,9 @@ def print_help():
 
 
 def main():
+    user_cfg = load_user_config()
+    if "color" in user_cfg:
+        ui.set_color_mode(str(user_cfg["color"]))
     handle_color_args()
 
     if any(a in ("-h", "--help", "help") for a in sys.argv[1:]):
@@ -355,7 +376,7 @@ def main():
         sys.exit(0)
 
     if any(a in ("-V", "-v", "--version", "version") for a in sys.argv[1:]):
-        print(f"{ui.badge()} {ui.bold('v0.1.0')}")
+        print(f"{ui.badge()} {ui.bold(f'v{__version__}')}")
         sys.exit(0)
 
     # Handle 'glaze undo' and 'glaze log'
@@ -384,7 +405,7 @@ def main():
     parser.add_argument(
         "-e",
         "--ext",
-        default="*",
+        default=str(user_cfg.get("ext", "*")),
         help="Filter by file extension (e.g., pdf, mp3, txt).",
     )
     parser.add_argument(
@@ -394,33 +415,40 @@ def main():
         "--hidden",
         dest="include_hidden",
         action="store_true",
+        default=bool(user_cfg.get("include_hidden", False)),
         help="Include hidden files (always excludes .git).",
     )
     parser.add_argument(
         "-s",
         "--safe",
         action="store_true",
+        default=bool(user_cfg.get("safe", False)),
         help="Safe ASCII: strip non-alphanumeric chars & normalize accents.",
     )
     parser.add_argument(
         "-l",
         "--lower-ext",
         action="store_true",
+        default=bool(user_cfg.get("lower_ext", False)),
         help="Convert file extensions to lowercase.",
     )
     parser.add_argument(
         "-r",
         "--recursive",
         action="store_true",
+        default=bool(user_cfg.get("recursive", False)),
         help="Recursively process subdirectories.",
     )
     parser.add_argument(
-        "--dirs", action="store_true", help="Also rename directory names."
+        "--dirs",
+        action="store_true",
+        default=bool(user_cfg.get("dirs", False)),
+        help="Also rename directory names.",
     )
     parser.add_argument(
         "--on-conflict",
         choices=["skip", "abort", "suffix"],
-        default="skip",
+        default=str(user_cfg.get("on_conflict", "skip")),
         help="Conflict resolution: skip, abort, suffix (Default: skip).",
     )
     parser.add_argument(
@@ -441,7 +469,7 @@ def main():
     parser.add_argument(
         "--color",
         choices=["auto", "always", "never"],
-        default="auto",
+        default=str(user_cfg.get("color", "auto")),
         help="Color output mode.",
     )
     parser.add_argument(
@@ -530,7 +558,7 @@ def main():
     if not args.case_mode and is_interactive_session:
         case_mode = ui.select("Select target case format:", CASE_OPTIONS)
     else:
-        case_mode = args.case_mode or "title_snake"
+        case_mode = args.case_mode or str(user_cfg.get("case_mode", "title_snake"))
 
     target_dir = Path(args.dir).resolve()
     if not target_dir.exists():

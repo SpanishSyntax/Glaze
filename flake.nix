@@ -61,6 +61,38 @@
       };
     })
     // {
+      overlays = {
+        default = final: prev: {
+          glaze = self.packages.${prev.stdenv.hostPlatform.system}.default;
+        };
+        glaze = self.overlays.default;
+      };
+
+      nixosModules = {
+        default = self.nixosModules.glaze;
+        glaze = {
+          config,
+          lib,
+          pkgs,
+          ...
+        }: let
+          cfg = config.programs.glaze;
+          system = pkgs.stdenv.hostPlatform.system;
+        in {
+          options.programs.glaze = {
+            enable = lib.mkEnableOption "Glaze - Universal filename sanitizer & case transformer";
+            package = lib.mkOption {
+              type = lib.types.package;
+              default = self.packages.${system}.default;
+              description = "The Glaze package to install system-wide.";
+            };
+          };
+          config = lib.mkIf cfg.enable {
+            environment.systemPackages = [cfg.package];
+          };
+        };
+      };
+
       homeManagerModules = {
         default = self.homeManagerModules.glaze;
         glaze = {
@@ -70,6 +102,7 @@
           ...
         }: let
           cfg = config.programs.glaze;
+          tomlFormat = pkgs.formats.toml {};
           system = pkgs.stdenv.hostPlatform.system;
           defaultGlaze = self.packages.${system}.default;
         in {
@@ -81,10 +114,19 @@
               default = defaultGlaze;
               description = "The Glaze package to use.";
             };
+
+            settings = lib.mkOption {
+              type = tomlFormat.type;
+              default = {};
+              description = "Configuration written to ~/.config/glaze/glaze.toml.";
+            };
           };
 
           config = lib.mkIf cfg.enable {
             home.packages = [cfg.package];
+            xdg.configFile."glaze/glaze.toml" = lib.mkIf (cfg.settings != {}) {
+              source = tomlFormat.generate "glaze.toml" cfg.settings;
+            };
           };
         };
       };
