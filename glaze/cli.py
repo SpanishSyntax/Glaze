@@ -145,7 +145,7 @@ def run_undo(dry_run: bool = False, list_only: bool = False) -> bool:
         return False
 
     if dry_run or list_only:
-        ui.header(f"{ui.app_name.upper()} UNDO LOG ({len(data)} operations)", width=76)
+        lines = []
         for item in reversed(data):
             old_p = Path(item["old"])
             new_p = Path(item["new"])
@@ -155,9 +155,10 @@ def run_undo(dry_run: bool = False, list_only: bool = False) -> bool:
                 tag = ui.red("[COLLISION]")
             else:
                 tag = ui.green("[REVERSIBLE]")
-            print(
-                f"  {tag} {ui.dim(new_p.name)} {ui.cyan('→')} {ui.bold(old_p.name)}  {ui.dim(f'({new_p})')}"
+            lines.append(
+                f"{tag} {ui.dim(new_p.name)} {ui.cyan('→')} {ui.bold(old_p.name)}"
             )
+        ui.panel(f"GLAZE UNDO LOG ({len(data)} operations)", lines)
         ui.info("Dry-run preview only. No files were modified.", symbol="💡")
         return True
 
@@ -555,29 +556,41 @@ def main():
         len(sys.argv) == 1 and sys.stdin.isatty()
     )
 
-    if not args.case_mode and is_interactive_session:
-        case_mode = ui.select("Select target case format:", CASE_OPTIONS)
-    else:
-        case_mode = args.case_mode or str(user_cfg.get("case_mode", "title_snake"))
-
     target_dir = Path(args.dir).resolve()
     if not target_dir.exists():
         ui.error(f"Directory '{target_dir}' does not exist.")
         sys.exit(1)
 
-    ui.header(f"{ui.app_name.upper()} BATCH RENAME ENGINE", width=76)
+    if is_interactive_session:
+        panel_lines = [
+            f"{ui.bold('Glaze Version:')}    {ui.bold_cyan(f'v{__version__}')} (Batch Renamer & File Slugifier)",
+            f"{ui.bold('Target Directory:')} {ui.cyan(str(target_dir))}",
+            f"{ui.bold('Default Mode:')}     {str(user_cfg.get('case_mode', 'title_snake'))} (Filter: {args.ext})",
+        ]
+        ui.panel("GLAZE BATCH RENAME ENGINE", panel_lines)
+
+    if not args.case_mode and is_interactive_session:
+        case_mode = ui.select("Select target case format:", CASE_OPTIONS)
+    else:
+        case_mode = args.case_mode or str(user_cfg.get("case_mode", "title_snake"))
+
     scope_str = "recursive" if args.recursive else "current directory"
-    safe_str = "Safe ASCII" if args.safe else "standard"
+    safe_str = "Safe ASCII (sanitized)" if args.safe else "standard unicode"
     hidden_str = (
         "all (including hidden)" if args.include_hidden else "standard (hidden skipped)"
     )
-    ui.info(
-        f"Target: {ui.cyan(str(target_dir))} | Mode: {ui.green(case_mode)} | Scope: {scope_str} | Hidden: {hidden_str}",
-        symbol="📂",
+    dry_str = (
+        ui.yellow("DRY RUN (Simulation)")
+        if args.dry_run
+        else ui.green("LIVE EXECUTION")
     )
-
-    if args.dry_run:
-        ui.warn("DRY RUN mode active: simulating renames without modifying files")
+    scan_lines = [
+        f"{ui.bold('Target Directory:')} {ui.cyan(str(target_dir))}",
+        f"{ui.bold('Case Transform:')}   {ui.bold_green(case_mode)} (Filter: {args.ext})",
+        f"{ui.bold('Scan Scope:')}       {scope_str} | Hidden: {hidden_str} | Charset: {safe_str}",
+        f"{ui.bold('Execution Mode:')}   {dry_str}",
+    ]
+    ui.panel("GLAZE BATCH RENAME ENGINE", scan_lines)
 
     plans = scan_directory(
         root=target_dir,
