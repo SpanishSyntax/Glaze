@@ -21,9 +21,18 @@ classifiers = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+test = [
+  "pytest>=7.0",
+]
+
 [project.scripts]
 glaze = "glaze.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["glaze*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

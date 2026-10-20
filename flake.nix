@@ -27,6 +27,10 @@
           pkgs.python3Packages.setuptools
         ];
 
+        nativeCheckInputs = [
+          pkgs.python3Packages.pytest
+        ];
+
         doCheck = false;
 
         meta = with lib; {
@@ -57,6 +61,7 @@
         packages = with pkgs; [
           python3
           python3Packages.setuptools
+          python3Packages.pytest
         ];
       };
     })
