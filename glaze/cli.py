@@ -18,7 +18,7 @@ from glaze.transform import (
     strip_accents,
     transform_words,
 )
-from glaze.ui import ui
+from glaze.ui import add_color_args, handle_color_args, ui
 
 __all__ = [
     "main",
@@ -37,17 +37,6 @@ __all__ = [
     "RenamePlan",
     "UNDO_LOG_PATH",
 ]
-
-
-def handle_color_args(argv: Sequence[str] | None = None) -> None:
-    args = argv if argv is not None else sys.argv[1:]
-    for i, arg in enumerate(args):
-        if arg == "--no-color":
-            ui.set_color_mode("never")
-        elif arg.startswith("--color="):
-            ui.set_color_mode(arg.split("=", 1)[1])
-        elif arg == "--color" and i + 1 < len(args):
-            ui.set_color_mode(args[i + 1])
 
 
 def print_help() -> None:
@@ -115,8 +104,7 @@ def _build_parser(user_cfg: dict[str, Any]) -> argparse.ArgumentParser:
     parser.add_argument("-y", "--yes", action="store_true")
     parser.add_argument("-i", "--interactive", action="store_true")
     parser.add_argument("--conflict", dest="on_conflict", choices=["skip", "suffix", "abort"], default=str(user_cfg.get("on_conflict", "skip")))
-    parser.add_argument("--color", choices=["auto", "always", "never"], default="auto")
-    parser.add_argument("--no-color", action="store_true")
+    add_color_args(parser)
     parser.add_argument("-h", "--help", action="store_true")
     parser.add_argument("-V", "-v", "--version", action="store_true")
 
